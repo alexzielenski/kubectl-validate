@@ -12,7 +12,6 @@ import (
 
 	"golang.org/x/exp/maps"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
-	"k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 	"k8s.io/apiextensions-apiserver/pkg/registry/customresource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -227,35 +226,6 @@ func (s *Validator) infoForGVK(gvk schema.GroupVersionKind) (*validatorEntry, er
 			// Don't explore children. This was a reference node and shares
 			// pointers with its schema which will be traversed in this loop.
 			return mergeSchemas(sch, resolved), false
-		}))
-
-		newSchemas[nam] = utils.VisitSchema(nam, newSchemas[nam], utils.PreorderVisitor(func(ctx utils.VisitingContext, s *spec.Schema) (*spec.Schema, bool) {
-			//!TODO: Fix codegen to do this
-			//!TODO: I think this bug also affects VAP? int-or-string fields
-			// have no type and are ignored by CEL decltype construction
-			if len(s.Type) == 0 && len(s.OneOf) == 2 && len(s.OneOf[0].Type) > 0 && len(s.OneOf[1].Type) > 0 {
-				oneOfTypes := sets.New[string](s.OneOf[0].Type[0], s.OneOf[1].Type[0])
-				if oneOfTypes.Has("string") && (oneOfTypes.Has("number") || oneOfTypes.Has("integer")) {
-					extCopy := make(spec.Extensions, len(s.Extensions))
-					for k, v := range s.Extensions {
-						extCopy[k] = v
-					}
-					s.Extensions = extCopy
-					s.AddExtension("x-kubernetes-int-or-string", true)
-
-					// OneOf is not valid in structural schema, so better to avoid it
-					// in favor of the x-kubernetes extension
-					if len(oneOfTypes) == 2 {
-						s.OneOf = nil
-					}
-				}
-			}
-
-			// Native type schemas for now may use unsupported formats that
-			// should be strippe such as int-or-string
-			//!TODO: move this somewhere else like some sort of schema visitor
-			validation.StripUnsupportedFormatsPostProcess(s)
-			return s, true
 		}))
 	}
 	openapiSpec.Components.Schemas = newSchemas
