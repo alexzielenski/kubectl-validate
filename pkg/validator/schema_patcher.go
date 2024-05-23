@@ -146,7 +146,7 @@ var schemaPatches []SchemaPatch = []SchemaPatch{
 
 			if len(s.Type) == 0 && len(s.OneOf) == 2 && len(s.OneOf[0].Type) > 0 && len(s.OneOf[1].Type) > 0 {
 				oneOfTypes := sets.New[string](s.OneOf[0].Type[0], s.OneOf[1].Type[0])
-				if oneOfTypes.Has("string") && oneOfTypes.Has("integer") {
+				if oneOfTypes.Has("string") && (oneOfTypes.Has("integer") || oneOfTypes.Has("number")) {
 					extCopy := make(spec.Extensions, len(s.Extensions))
 					for k, v := range s.Extensions {
 						extCopy[k] = v
